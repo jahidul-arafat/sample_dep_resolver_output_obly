@@ -1,0 +1,835 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dependency Replacement Graph</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet" type="text/css"/>
+    <style type="text/css">
+        
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #mynetwork {
+            width: 100%;
+            height: 100%;
+            border: 1px solid lightgray;
+        }
+    
+        
+        #legend {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 250px;
+            max-height: 80%;
+            overflow-y: auto;
+            cursor: move;
+            user-select: none;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+        #legend h3 {
+            margin-top: 0;
+            font-size: 13px;
+        }
+        .color-box {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        .circle {
+            border-radius: 50%;
+        }
+        .line {
+            height: 2px;
+        }
+        .dependency-list {
+            margin-top: 5px;
+        }
+        .important-nodes {
+            margin-top: 5px;
+        }
+        .important-nodes ul {
+            padding-left: 15px;
+            margin: 0;
+        }
+        .important-nodes li {
+            margin-bottom: 3px;
+        }
+        .node-tooltip {
+            background-color: rgba(144, 238, 144, 0.4);  /* Light green with 0.4 opacity */
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            border: none;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        .node-tooltip h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 1px solid #c8e6c9;
+            padding-bottom: 8px;
+            font-size: 16px;
+        }
+        .node-tooltip p {
+            margin: 8px 0;
+            color: #34495e;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .node-tooltip ul {
+            padding-left: 20px;
+        }
+        .node-tooltip li {
+            margin-bottom: 5px;
+        }
+        #search-container {
+            margin-top: 10px;
+        }
+        #search-input {
+            width: 70%;
+            padding: 5px;
+        }
+        #search-button {
+            padding: 5px;
+        }
+        #filter-container {
+            margin-top: 10px;
+        }
+        .filter-checkbox {
+            margin-right: 5px;
+        }
+        #explanation {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 250px;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+        
+        #explanation h3 {
+            margin-top: 0;
+            font-size: 13px;
+        }
+        
+        #explanation ul {
+            padding-left: 15px;
+            margin: 5px 0;
+        }
+        
+        #explanation p {
+            margin: 5px 0;
+        }
+        #title-container {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        #title {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+        #subheading {
+            font-size: 12px;
+            font-weight: normal;
+            margin: 0;
+            padding: 0;
+        }
+        #jsonTable {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 80%;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            font-size: 10px;
+        }
+        #jsonTable table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        #jsonTable th, #jsonTable td {
+            border: 1px solid #ddd;
+            padding: 4px;
+            text-align: left;
+        }
+        #jsonTable th {
+            background-color: #f2f2f2;
+        }
+        #toggleTable {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 2;
+        }
+    
+    </style>
+</head>
+<body>
+    <div id="title-container">
+        <div id="title">Kubernetes Operator Go Module Dependency Replacement Graph</div>
+        <div id="subheading">Designed by Jahidul Arafat, PGRF, CSSE,AU</div>
+        <div id="subheading">Repository: https://github.com/Azure/azure-service-operator</div>
+    </div>
+    <div id="explanation">
+        <h3>About This Graph</h3>
+        <p>This graph visualizes the dependency replacement structure in a Go module. It shows:</p>
+        <ul>
+            <li>Original dependencies (red nodes)</li>
+            <li>Replaced dependencies (green nodes)</li>
+            <li>Submodule relations (blue edges)</li>
+            <li>Replacement relations (orange edges)</li>
+        </ul>
+        <p>The graph is generated from a JSON file that maps original packages to their replacements. It helps researchers and developers understand:</p>
+        <ul>
+            <li>The complexity of dependency management in the project</li>
+            <li>Potential areas of version conflicts or compatibility issues</li>
+            <li>The extent of customization in the dependency tree</li>
+            <li>Possible security implications of replaced dependencies</li>
+        </ul>
+        <p>This visualization can be crucial for code audits, dependency analysis, and understanding the project's external reliances and modifications.</p>
+        
+        <h3>Key Features of <code>gomod reveal</code></h3>
+        <p>This tool provides the following benefits:</p>
+        <ul>
+            <li><strong>Detect Hidden <code>replace</code> Statements</strong>: Reveals cases where a dependency in your module is using a <code>replace</code> directive that might override the expected version.</li>
+            <li><strong>Avoid Unexpected Build Errors</strong>: If a dependency relies on a different module version (via <code>replace</code>), your project might not build as expected. This command helps uncover such issues.</li>
+            <li><strong>Resolve Dependency Mismatches</strong>: Helps identify conflicts where multiple dependencies replace the same module differently.</li>
+            <li><strong>Improves Transparency</strong>: Ensures you have full visibility into how Go resolves your project's dependencies.</li>
+        </ul>
+        
+        <h3>Example Output</h3>
+        <p><code>'github.com/Rhymen/go-whatsapp' is replaced:<br>
+        maunium.net/go/mautrix-whatsapp -> github.com/tulir/go-whatsapp @ v0.0.2-0.20190528182350-fde573a2a73b<br>
+        'gopkg.in/russross/blackfriday.v2' is replaced:<br>
+        ✓ maunium.net/go/mautrix -> github.com/russross/blackfriday/v2 @ v2.0.1<br>
+        ✓ maunium.net/go/mautrix-appservice -> github.com/russross/blackfriday/v2 @ v2.0.1<br>
+        ✓ maunium.net/go/mautrix-whatsapp -> github.com/russross/blackfriday/v2 @ v2.0.1<br>
+        [✓] Match with a top-level replace in 'github.com/42wim/matterbridge'</code></p>
+    </div>
+    <div id="legend">
+        <h3>Legend</h3>
+        <div><span class="color-box circle" style="background-color: #e57373;"></span> Original Dependencies</div>
+        <div><span class="color-box circle" style="background-color: #8bc34a;"></span> Replaced Dependencies</div>
+        <div><span class="color-box line" style="background-color: #2196f3;"></span> Submodule Relation</div>
+        <div><span class="color-box line" style="background-color: #ff9800;"></span> Replacement Relation</div>
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Search dependency...">
+            <button id="search-button">Search</button>
+        </div>
+        <div id="filter-container">
+            <label><input type="checkbox" class="filter-checkbox" value="original" checked> Original Dependencies</label><br>
+            <label><input type="checkbox" class="filter-checkbox" value="replaced" checked> Replaced Dependencies</label><br>
+            <label><input type="checkbox" class="filter-checkbox" value="kubernetes" checked> Kubernetes Dependencies</label>
+        </div>
+        
+        <h4>Statistics</h4>
+        <div>Total Dependencies: 70</div>
+        <div>Original Dependencies: 32</div>
+        <div>Replaced Dependencies: 38</div>
+        <div class="important-nodes">
+            <h4>Important Nodes:</h4>
+            <ul>
+                
+    <li>
+        <strong>./FORBIDDEN_DEPENDENCY</strong> (20)<br>
+        Central dependency: Critical for updates/issues.
+    </li>
+
+    <li>
+        <strong>go.etcd.io/etcd/server/v3</strong> (16)<br>
+        Central dependency: Critical for updates/issues.
+    </li>
+
+    <li>
+        <strong>go.etcd.io/etcd/api/v3</strong> (15)<br>
+        Central dependency: Critical for updates/issues.
+    </li>
+
+    <li>
+        <strong>go.etcd.io/etcd/pkg/v3</strong> (14)<br>
+        Central dependency: Critical for updates/issues.
+    </li>
+
+    <li>
+        <strong>k8s.io/apiextensions-apiserver</strong> (14)<br>
+        Central dependency: Critical for updates/issues.
+    </li>
+
+            </ul>
+        </div>
+        <div class="dependency-list">
+            <h4>Original Dependencies:</h4>
+            <ul>
+                <li>github.com/golang/lint</li><li>github.com/go-openapi/swag</li><li>go.etcd.io/etcd</li><li>go.etcd.io/etcd/api/v3</li><li>go.etcd.io/etcd/client/v2</li><li>go.etcd.io/etcd/client/v3</li><li>go.etcd.io/etcd/pkg/v3</li><li>go.etcd.io/etcd/raft/v3</li><li>go.etcd.io/etcd/server/v3</li><li>go.etcd.io/etcd/client/pkg/v3</li><li>go.etcd.io/etcd/tests/v3</li><li>go.etcd.io/etcd/v3</li><li>go.etcd.io/tests/v3</li><li>go.opentelemetry.io/otel</li><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace</li><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</li><li>go.opentelemetry.io/otel/metric</li><li>go.opentelemetry.io/otel/sdk</li><li>go.opentelemetry.io/otel/trace</li><li>go.opentelemetry.io/otel/exporters/otlp/internal/retry</li><li>golang.org/x/sys</li><li>k8s.io/gengo</li><li>golang.org/x/tools</li><li>k8s.io/api</li><li>k8s.io/apiextensions-apiserver</li><li>k8s.io/apiserver</li><li>k8s.io/client-go</li><li>k8s.io/component-base</li><li>k8s.io/kms</li><li>k8s.io/apimachinery</li><li>k8s.io/code-generator</li><li>sourcegraph.com/sourcegraph/go-diff</li>
+            </ul>
+            <h4>Replaced Dependencies:</h4>
+            <ul>
+                <li>golang.org/x/lint @ v0.0.0-20190409202823-959b441ac422</li><li>./FORBIDDEN_DEPENDENCY</li><li>../../api</li><li>../api</li><li>../pkg</li><li>../client/pkg</li><li>../client/v2</li><li>../client/v3</li><li>./FORBIDDED_DEPENDENCY</li><li>../raft</li><li>../../..</li><li>../../../..</li><li>../</li><li>../internal/retry</li><li>../../internal/retry</li><li>../../../sdk</li><li>../../../../sdk</li><li>./trace</li><li>../../../trace</li><li>../../../../trace</li><li>../trace</li><li>golang.org/x/sys @ v0.0.0-20190813064441-fde4db37ae7a</li><li>golang.org/x/tools @ v0.0.0-20190821162956-65e3620a7ae7</li><li>k8s.io/api @ v0.28.0</li><li>k8s.io/api @ v0.28.1</li><li>k8s.io/api @ v0.28.3</li><li>k8s.io/apimachinery @ v0.28.3</li><li>k8s.io/apimachinery @ v0.28.0</li><li>k8s.io/apimachinery @ v0.28.1</li><li>k8s.io/apiserver @ v0.28.0</li><li>k8s.io/client-go @ v0.28.0</li><li>k8s.io/client-go @ v0.28.1</li><li>k8s.io/code-generator @ v0.28.0</li><li>k8s.io/component-base @ v0.28.0</li><li>k8s.io/component-base @ v0.28.1</li><li>k8s.io/kms @ v0.28.0</li><li>k8s.io/kms @ v0.28.1</li><li>github.com/sourcegraph/go-diff @ v0.5.1</li>
+            </ul>
+        </div>
+    </div>
+    <div id="mynetwork"></div>
+    <button id="toggleTable">Show JSON Table</button>
+    <div id="jsonTable">
+        <h3>gomod_reveal.json Contents</h3>
+        <table>
+            <tr>
+                <th>Original Package</th>
+                <th>Submodule</th>
+                <th>Replacement</th>
+            </tr>
+            <tr>
+                        <td>github.com/golang/lint</td>
+                        <td>github.com/go-openapi/swag</td>
+                        <td>golang.org/x/lint @ v0.0.0-20190409202823-959b441ac422</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd</td>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd</td>
+                        <td>go.etcd.io/etcd/client/v2</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd</td>
+                        <td>go.etcd.io/etcd/client/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd</td>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd</td>
+                        <td>go.etcd.io/etcd/raft/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>go.etcd.io/etcd/client/v2</td>
+                        <td>../../api</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>go.etcd.io/etcd/client/v3</td>
+                        <td>../../api</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>../api</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/client/pkg/v3</td>
+                        <td>go.etcd.io/etcd/client/v2</td>
+                        <td>../pkg</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/client/pkg/v3</td>
+                        <td>go.etcd.io/etcd/client/v3</td>
+                        <td>../pkg</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/client/pkg/v3</td>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>../client/pkg</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/client/pkg/v3</td>
+                        <td>go.etcd.io/etcd/raft/v3</td>
+                        <td>../client/pkg</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/client/pkg/v3</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>../client/pkg</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/client/v2</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>../client/v2</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/client/v3</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>../client/v3</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>go.etcd.io/etcd/client/v2</td>
+                        <td>./FORBIDDED_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>go.etcd.io/etcd/client/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>../pkg</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/raft/v3</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>../raft</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/tests/v3</td>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/tests/v3</td>
+                        <td>go.etcd.io/etcd/client/v2</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/tests/v3</td>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/v3</td>
+                        <td>go.etcd.io/etcd/api/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/v3</td>
+                        <td>go.etcd.io/etcd/client/v2</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/v3</td>
+                        <td>go.etcd.io/etcd/client/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/v3</td>
+                        <td>go.etcd.io/etcd/pkg/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/etcd/v3</td>
+                        <td>go.etcd.io/etcd/raft/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/tests/v3</td>
+                        <td>go.etcd.io/etcd/client/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.etcd.io/tests/v3</td>
+                        <td>go.etcd.io/etcd/server/v3</td>
+                        <td>./FORBIDDEN_DEPENDENCY</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace</td>
+                        <td>../../..</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</td>
+                        <td>../../../..</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel</td>
+                        <td>go.opentelemetry.io/otel/metric</td>
+                        <td>../</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel</td>
+                        <td>go.opentelemetry.io/otel/sdk</td>
+                        <td>../</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel</td>
+                        <td>go.opentelemetry.io/otel/trace</td>
+                        <td>../</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/internal/retry</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace</td>
+                        <td>../internal/retry</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/internal/retry</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</td>
+                        <td>../../internal/retry</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</td>
+                        <td>../</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/sdk</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace</td>
+                        <td>../../../sdk</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/sdk</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</td>
+                        <td>../../../../sdk</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/trace</td>
+                        <td>go.opentelemetry.io/otel</td>
+                        <td>./trace</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/trace</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace</td>
+                        <td>../../../trace</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/trace</td>
+                        <td>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</td>
+                        <td>../../../../trace</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/trace</td>
+                        <td>go.opentelemetry.io/otel/metric</td>
+                        <td>../trace</td>
+                    </tr><tr>
+                        <td>go.opentelemetry.io/otel/trace</td>
+                        <td>go.opentelemetry.io/otel/sdk</td>
+                        <td>../trace</td>
+                    </tr><tr>
+                        <td>golang.org/x/sys</td>
+                        <td>k8s.io/gengo</td>
+                        <td>golang.org/x/sys @ v0.0.0-20190813064441-fde4db37ae7a</td>
+                    </tr><tr>
+                        <td>golang.org/x/tools</td>
+                        <td>k8s.io/gengo</td>
+                        <td>golang.org/x/tools @ v0.0.0-20190821162956-65e3620a7ae7</td>
+                    </tr><tr>
+                        <td>k8s.io/api</td>
+                        <td>k8s.io/apiextensions-apiserver</td>
+                        <td>k8s.io/api @ v0.28.0</td>
+                    </tr><tr>
+                        <td>k8s.io/api</td>
+                        <td>k8s.io/apiserver</td>
+                        <td>k8s.io/api @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/api</td>
+                        <td>k8s.io/client-go</td>
+                        <td>k8s.io/api @ v0.28.3</td>
+                    </tr><tr>
+                        <td>k8s.io/api</td>
+                        <td>k8s.io/component-base</td>
+                        <td>k8s.io/api @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/api</td>
+                        <td>k8s.io/kms</td>
+                        <td>k8s.io/api @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/apimachinery</td>
+                        <td>k8s.io/api</td>
+                        <td>k8s.io/apimachinery @ v0.28.3</td>
+                    </tr><tr>
+                        <td>k8s.io/apimachinery</td>
+                        <td>k8s.io/apiextensions-apiserver</td>
+                        <td>k8s.io/apimachinery @ v0.28.0</td>
+                    </tr><tr>
+                        <td>k8s.io/apimachinery</td>
+                        <td>k8s.io/apiserver</td>
+                        <td>k8s.io/apimachinery @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/apimachinery</td>
+                        <td>k8s.io/client-go</td>
+                        <td>k8s.io/apimachinery @ v0.28.3</td>
+                    </tr><tr>
+                        <td>k8s.io/apimachinery</td>
+                        <td>k8s.io/component-base</td>
+                        <td>k8s.io/apimachinery @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/apimachinery</td>
+                        <td>k8s.io/kms</td>
+                        <td>k8s.io/apimachinery @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/apiserver</td>
+                        <td>k8s.io/apiextensions-apiserver</td>
+                        <td>k8s.io/apiserver @ v0.28.0</td>
+                    </tr><tr>
+                        <td>k8s.io/client-go</td>
+                        <td>k8s.io/apiextensions-apiserver</td>
+                        <td>k8s.io/client-go @ v0.28.0</td>
+                    </tr><tr>
+                        <td>k8s.io/client-go</td>
+                        <td>k8s.io/apiserver</td>
+                        <td>k8s.io/client-go @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/client-go</td>
+                        <td>k8s.io/component-base</td>
+                        <td>k8s.io/client-go @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/client-go</td>
+                        <td>k8s.io/kms</td>
+                        <td>k8s.io/client-go @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/code-generator</td>
+                        <td>k8s.io/apiextensions-apiserver</td>
+                        <td>k8s.io/code-generator @ v0.28.0</td>
+                    </tr><tr>
+                        <td>k8s.io/component-base</td>
+                        <td>k8s.io/apiextensions-apiserver</td>
+                        <td>k8s.io/component-base @ v0.28.0</td>
+                    </tr><tr>
+                        <td>k8s.io/component-base</td>
+                        <td>k8s.io/apiserver</td>
+                        <td>k8s.io/component-base @ v0.28.1</td>
+                    </tr><tr>
+                        <td>k8s.io/kms</td>
+                        <td>k8s.io/apiextensions-apiserver</td>
+                        <td>k8s.io/kms @ v0.28.0</td>
+                    </tr><tr>
+                        <td>k8s.io/kms</td>
+                        <td>k8s.io/apiserver</td>
+                        <td>k8s.io/kms @ v0.28.1</td>
+                    </tr><tr>
+                        <td>sourcegraph.com/sourcegraph/go-diff</td>
+                        <td>github.com/go-openapi/swag</td>
+                        <td>github.com/sourcegraph/go-diff @ v0.5.1</td>
+                    </tr>
+        </table>
+    </div>
+    <script type="text/javascript">
+        var nodes = new vis.DataSet([{"id":0,"label":"github.com/golang/lint","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>github.com/golang/lint</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>github.com/go-openapi/swag → golang.org/x/lint @ v0.0.0-20190409202823-959b441ac422</li></ul></div>","weight":1},{"id":1,"label":"github.com/go-openapi/swag","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>github.com/go-openapi/swag</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul></div>","weight":3},{"id":2,"label":"golang.org/x/lint @ v0.0.0-20190409202823-959b441ac422","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>golang.org/x/lint @ v0.0.0-20190409202823-959b441ac422</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> github.com/golang/lint</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":3,"label":"go.etcd.io/etcd","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/api/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/client/v2 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/client/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/pkg/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/raft/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/server/v3 → ./FORBIDDEN_DEPENDENCY</li></ul></div>","weight":1},{"id":4,"label":"go.etcd.io/etcd/api/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":25,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/api/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/api/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/client/v2 → ../../api</li><li>go.etcd.io/etcd/client/v3 → ../../api</li><li>go.etcd.io/etcd/pkg/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/server/v3 → ../api</li></ul></div>","weight":6},{"id":5,"label":"./FORBIDDEN_DEPENDENCY","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":55,"title":"<div class=\"node-tooltip\">\n        <h3>./FORBIDDEN_DEPENDENCY</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd</p><h4>Connections:</h4><ul></ul></div>","weight":21},{"id":6,"label":"go.etcd.io/etcd/client/v2","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":27,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/client/v2</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/server/v3 → ../client/v2</li></ul></div>","weight":7},{"id":7,"label":"go.etcd.io/etcd/client/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":27,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/client/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/server/v3 → ../client/v3</li></ul></div>","weight":7},{"id":8,"label":"go.etcd.io/etcd/pkg/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":25,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/pkg/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/api/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/client/v2 → ./FORBIDDED_DEPENDENCY</li><li>go.etcd.io/etcd/client/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/server/v3 → ../pkg</li></ul></div>","weight":6},{"id":9,"label":"go.etcd.io/etcd/raft/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/raft/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/server/v3 → ../raft</li></ul></div>","weight":4},{"id":10,"label":"go.etcd.io/etcd/server/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":31,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/server/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul></div>","weight":9},{"id":11,"label":"../../api","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>../../api</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/api/v3</p><h4>Connections:</h4><ul></ul></div>","weight":3},{"id":12,"label":"../api","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../api</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/api/v3</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":13,"label":"go.etcd.io/etcd/client/pkg/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/client/pkg/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/client/v2 → ../pkg</li><li>go.etcd.io/etcd/client/v3 → ../pkg</li><li>go.etcd.io/etcd/pkg/v3 → ../client/pkg</li><li>go.etcd.io/etcd/raft/v3 → ../client/pkg</li><li>go.etcd.io/etcd/server/v3 → ../client/pkg</li></ul></div>","weight":1},{"id":14,"label":"../pkg","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>../pkg</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/client/pkg/v3</p><h4>Connections:</h4><ul></ul></div>","weight":4},{"id":15,"label":"../client/pkg","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>../client/pkg</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/client/pkg/v3</p><h4>Connections:</h4><ul></ul></div>","weight":4},{"id":16,"label":"../client/v2","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../client/v2</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/client/v2</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":17,"label":"../client/v3","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../client/v3</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/client/v3</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":18,"label":"./FORBIDDED_DEPENDENCY","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>./FORBIDDED_DEPENDENCY</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/pkg/v3</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":19,"label":"../raft","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../raft</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.etcd.io/etcd/raft/v3</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":20,"label":"go.etcd.io/etcd/tests/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/tests/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/api/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/client/v2 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/pkg/v3 → ./FORBIDDEN_DEPENDENCY</li></ul></div>","weight":1},{"id":21,"label":"go.etcd.io/etcd/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/etcd/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/api/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/client/v2 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/client/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/pkg/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/raft/v3 → ./FORBIDDEN_DEPENDENCY</li></ul></div>","weight":1},{"id":22,"label":"go.etcd.io/tests/v3","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>go.etcd.io/tests/v3</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.etcd.io/etcd/client/v3 → ./FORBIDDEN_DEPENDENCY</li><li>go.etcd.io/etcd/server/v3 → ./FORBIDDEN_DEPENDENCY</li></ul></div>","weight":1},{"id":23,"label":"go.opentelemetry.io/otel","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>go.opentelemetry.io/otel</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace → ../../..</li><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc → ../../../..</li><li>go.opentelemetry.io/otel/metric → ../</li><li>go.opentelemetry.io/otel/sdk → ../</li><li>go.opentelemetry.io/otel/trace → ../</li></ul></div>","weight":2},{"id":24,"label":"go.opentelemetry.io/otel/exporters/otlp/otlptrace","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":23,"title":"<div class=\"node-tooltip\">\n        <h3>go.opentelemetry.io/otel/exporters/otlp/otlptrace</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc → ../</li></ul></div>","weight":5},{"id":25,"label":"../../..","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../../..</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":26,"label":"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":25,"title":"<div class=\"node-tooltip\">\n        <h3>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul></div>","weight":6},{"id":27,"label":"../../../..","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../../../..</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":28,"label":"go.opentelemetry.io/otel/metric","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>go.opentelemetry.io/otel/metric</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul></div>","weight":3},{"id":29,"label":"../","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":23,"title":"<div class=\"node-tooltip\">\n        <h3>../</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel</p><h4>Connections:</h4><ul></ul></div>","weight":5},{"id":30,"label":"go.opentelemetry.io/otel/sdk","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>go.opentelemetry.io/otel/sdk</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace → ../../../sdk</li><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc → ../../../../sdk</li></ul></div>","weight":3},{"id":31,"label":"go.opentelemetry.io/otel/trace","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>go.opentelemetry.io/otel/trace</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.opentelemetry.io/otel → ./trace</li><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace → ../../../trace</li><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc → ../../../../trace</li><li>go.opentelemetry.io/otel/metric → ../trace</li><li>go.opentelemetry.io/otel/sdk → ../trace</li></ul></div>","weight":2},{"id":32,"label":"go.opentelemetry.io/otel/exporters/otlp/internal/retry","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>go.opentelemetry.io/otel/exporters/otlp/internal/retry</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace → ../internal/retry</li><li>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc → ../../internal/retry</li></ul></div>","weight":1},{"id":33,"label":"../internal/retry","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../internal/retry</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/exporters/otlp/internal/retry</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":34,"label":"../../internal/retry","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../../internal/retry</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/exporters/otlp/internal/retry</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":35,"label":"../../../sdk","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../../../sdk</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/sdk</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":36,"label":"../../../../sdk","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../../../../sdk</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/sdk</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":37,"label":"./trace","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>./trace</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/trace</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":38,"label":"../../../trace","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../../../trace</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/trace</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":39,"label":"../../../../trace","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>../../../../trace</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/trace</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":40,"label":"../trace","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>../trace</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> go.opentelemetry.io/otel/trace</p><h4>Connections:</h4><ul></ul></div>","weight":3},{"id":41,"label":"golang.org/x/sys","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>golang.org/x/sys</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/gengo → golang.org/x/sys @ v0.0.0-20190813064441-fde4db37ae7a</li></ul></div>","weight":1},{"id":42,"label":"k8s.io/gengo","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/gengo</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul></div>","weight":3},{"id":43,"label":"golang.org/x/sys @ v0.0.0-20190813064441-fde4db37ae7a","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>golang.org/x/sys @ v0.0.0-20190813064441-fde4db37ae7a</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> golang.org/x/sys</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":44,"label":"golang.org/x/tools","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>golang.org/x/tools</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/gengo → golang.org/x/tools @ v0.0.0-20190821162956-65e3620a7ae7</li></ul></div>","weight":1},{"id":45,"label":"golang.org/x/tools @ v0.0.0-20190821162956-65e3620a7ae7","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>golang.org/x/tools @ v0.0.0-20190821162956-65e3620a7ae7</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> golang.org/x/tools</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":46,"label":"k8s.io/api","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/api</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/apiextensions-apiserver → k8s.io/api @ v0.28.0</li><li>k8s.io/apiserver → k8s.io/api @ v0.28.1</li><li>k8s.io/client-go → k8s.io/api @ v0.28.3</li><li>k8s.io/component-base → k8s.io/api @ v0.28.1</li><li>k8s.io/kms → k8s.io/api @ v0.28.1</li></ul></div>","weight":2},{"id":47,"label":"k8s.io/apiextensions-apiserver","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":29,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/apiextensions-apiserver</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul></div>","weight":8},{"id":48,"label":"k8s.io/api @ v0.28.0","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/api @ v0.28.0</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/api</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":49,"label":"k8s.io/apiserver","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":25,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/apiserver</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/apiextensions-apiserver → k8s.io/apiserver @ v0.28.0</li></ul></div>","weight":6},{"id":50,"label":"k8s.io/api @ v0.28.1","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/api @ v0.28.1</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/api</p><h4>Connections:</h4><ul></ul></div>","weight":4},{"id":51,"label":"k8s.io/client-go","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/client-go</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/apiextensions-apiserver → k8s.io/client-go @ v0.28.0</li><li>k8s.io/apiserver → k8s.io/client-go @ v0.28.1</li><li>k8s.io/component-base → k8s.io/client-go @ v0.28.1</li><li>k8s.io/kms → k8s.io/client-go @ v0.28.1</li></ul></div>","weight":3},{"id":52,"label":"k8s.io/api @ v0.28.3","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/api @ v0.28.3</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/api</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":53,"label":"k8s.io/component-base","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/component-base</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/apiextensions-apiserver → k8s.io/component-base @ v0.28.0</li><li>k8s.io/apiserver → k8s.io/component-base @ v0.28.1</li></ul></div>","weight":4},{"id":54,"label":"k8s.io/kms","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/kms</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/apiextensions-apiserver → k8s.io/kms @ v0.28.0</li><li>k8s.io/apiserver → k8s.io/kms @ v0.28.1</li></ul></div>","weight":4},{"id":55,"label":"k8s.io/apimachinery","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/apimachinery</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/api → k8s.io/apimachinery @ v0.28.3</li><li>k8s.io/apiextensions-apiserver → k8s.io/apimachinery @ v0.28.0</li><li>k8s.io/apiserver → k8s.io/apimachinery @ v0.28.1</li><li>k8s.io/client-go → k8s.io/apimachinery @ v0.28.3</li><li>k8s.io/component-base → k8s.io/apimachinery @ v0.28.1</li><li>k8s.io/kms → k8s.io/apimachinery @ v0.28.1</li></ul></div>","weight":1},{"id":56,"label":"k8s.io/apimachinery @ v0.28.3","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":19,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/apimachinery @ v0.28.3</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/apimachinery</p><h4>Connections:</h4><ul></ul></div>","weight":3},{"id":57,"label":"k8s.io/apimachinery @ v0.28.0","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/apimachinery @ v0.28.0</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/apimachinery</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":58,"label":"k8s.io/apimachinery @ v0.28.1","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/apimachinery @ v0.28.1</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/apimachinery</p><h4>Connections:</h4><ul></ul></div>","weight":4},{"id":59,"label":"k8s.io/apiserver @ v0.28.0","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/apiserver @ v0.28.0</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/apiserver</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":60,"label":"k8s.io/client-go @ v0.28.0","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/client-go @ v0.28.0</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/client-go</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":61,"label":"k8s.io/client-go @ v0.28.1","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":21,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/client-go @ v0.28.1</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/client-go</p><h4>Connections:</h4><ul></ul></div>","weight":4},{"id":62,"label":"k8s.io/code-generator","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/code-generator</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>k8s.io/apiextensions-apiserver → k8s.io/code-generator @ v0.28.0</li></ul></div>","weight":1},{"id":63,"label":"k8s.io/code-generator @ v0.28.0","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/code-generator @ v0.28.0</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/code-generator</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":64,"label":"k8s.io/component-base @ v0.28.0","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/component-base @ v0.28.0</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/component-base</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":65,"label":"k8s.io/component-base @ v0.28.1","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/component-base @ v0.28.1</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/component-base</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":66,"label":"k8s.io/kms @ v0.28.0","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/kms @ v0.28.0</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/kms</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":67,"label":"k8s.io/kms @ v0.28.1","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>k8s.io/kms @ v0.28.1</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> true</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> k8s.io/kms</p><h4>Connections:</h4><ul></ul></div>","weight":2},{"id":68,"label":"sourcegraph.com/sourcegraph/go-diff","color":{"background":"#e57373","border":"#d32f2f"},"shape":"dot","size":15,"title":"<div class=\"node-tooltip\">\n        <h3>sourcegraph.com/sourcegraph/go-diff</h3>\n        <p><strong>Type:</strong> Original Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a original dependency in the Go module. \n        It is part of the original dependency tree of the project.</p><h4>Connections:</h4><ul></ul><h4>Replacements:</h4><ul><li>github.com/go-openapi/swag → github.com/sourcegraph/go-diff @ v0.5.1</li></ul></div>","weight":1},{"id":69,"label":"github.com/sourcegraph/go-diff @ v0.5.1","color":{"background":"#8bc34a","border":"#689f38"},"shape":"dot","size":17,"title":"<div class=\"node-tooltip\">\n        <h3>github.com/sourcegraph/go-diff @ v0.5.1</h3>\n        <p><strong>Type:</strong> Replaced Dependency</p><p><strong>Is Kubernetes Related:</strong> false</p><p><strong>Is Core Dependency:</strong> false<h4>Explanation:</h4>\n        <p>This node represents a replaced dependency in the Go module. \n        It has been substituted for an original dependency, possibly for customization or version control.</p><p><strong>Replaces:</strong> sourcegraph.com/sourcegraph/go-diff</p><h4>Connections:</h4><ul></ul></div>","weight":2}]);
+        var edges = new vis.DataSet([{"from":0,"to":1,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>github.com/golang/lint -> github.com/go-openapi/swag"},{"from":1,"to":2,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>github.com/go-openapi/swag is replaced by golang.org/x/lint @ v0.0.0-20190409202823-959b441ac422"},{"from":3,"to":4,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd -> go.etcd.io/etcd/api/v3"},{"from":4,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/api/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":3,"to":6,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd -> go.etcd.io/etcd/client/v2"},{"from":6,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v2 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":3,"to":7,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd -> go.etcd.io/etcd/client/v3"},{"from":7,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":3,"to":8,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd -> go.etcd.io/etcd/pkg/v3"},{"from":8,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/pkg/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":3,"to":9,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd -> go.etcd.io/etcd/raft/v3"},{"from":9,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/raft/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":3,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd -> go.etcd.io/etcd/server/v3"},{"from":10,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":4,"to":4,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/api/v3 -> go.etcd.io/etcd/api/v3"},{"from":4,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/api/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":4,"to":6,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/api/v3 -> go.etcd.io/etcd/client/v2"},{"from":6,"to":11,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v2 is replaced by ../../api"},{"from":4,"to":7,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/api/v3 -> go.etcd.io/etcd/client/v3"},{"from":7,"to":11,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v3 is replaced by ../../api"},{"from":4,"to":8,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/api/v3 -> go.etcd.io/etcd/pkg/v3"},{"from":8,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/pkg/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":4,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/api/v3 -> go.etcd.io/etcd/server/v3"},{"from":10,"to":12,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ../api"},{"from":13,"to":6,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/client/pkg/v3 -> go.etcd.io/etcd/client/v2"},{"from":6,"to":14,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v2 is replaced by ../pkg"},{"from":13,"to":7,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/client/pkg/v3 -> go.etcd.io/etcd/client/v3"},{"from":7,"to":14,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v3 is replaced by ../pkg"},{"from":13,"to":8,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/client/pkg/v3 -> go.etcd.io/etcd/pkg/v3"},{"from":8,"to":15,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/pkg/v3 is replaced by ../client/pkg"},{"from":13,"to":9,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/client/pkg/v3 -> go.etcd.io/etcd/raft/v3"},{"from":9,"to":15,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/raft/v3 is replaced by ../client/pkg"},{"from":13,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/client/pkg/v3 -> go.etcd.io/etcd/server/v3"},{"from":10,"to":15,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ../client/pkg"},{"from":6,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/client/v2 -> go.etcd.io/etcd/server/v3"},{"from":10,"to":16,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ../client/v2"},{"from":7,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/client/v3 -> go.etcd.io/etcd/server/v3"},{"from":10,"to":17,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ../client/v3"},{"from":8,"to":4,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/pkg/v3 -> go.etcd.io/etcd/api/v3"},{"from":4,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/api/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":8,"to":6,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/pkg/v3 -> go.etcd.io/etcd/client/v2"},{"from":6,"to":18,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v2 is replaced by ./FORBIDDED_DEPENDENCY"},{"from":8,"to":7,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/pkg/v3 -> go.etcd.io/etcd/client/v3"},{"from":7,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":8,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/pkg/v3 -> go.etcd.io/etcd/server/v3"},{"from":10,"to":14,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ../pkg"},{"from":9,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/raft/v3 -> go.etcd.io/etcd/server/v3"},{"from":10,"to":19,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ../raft"},{"from":20,"to":4,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/tests/v3 -> go.etcd.io/etcd/api/v3"},{"from":4,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/api/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":20,"to":6,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/tests/v3 -> go.etcd.io/etcd/client/v2"},{"from":6,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v2 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":20,"to":8,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/tests/v3 -> go.etcd.io/etcd/pkg/v3"},{"from":8,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/pkg/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":21,"to":4,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/v3 -> go.etcd.io/etcd/api/v3"},{"from":4,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/api/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":21,"to":6,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/v3 -> go.etcd.io/etcd/client/v2"},{"from":6,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v2 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":21,"to":7,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/v3 -> go.etcd.io/etcd/client/v3"},{"from":7,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":21,"to":8,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/v3 -> go.etcd.io/etcd/pkg/v3"},{"from":8,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/pkg/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":21,"to":9,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/etcd/v3 -> go.etcd.io/etcd/raft/v3"},{"from":9,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/raft/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":22,"to":7,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/tests/v3 -> go.etcd.io/etcd/client/v3"},{"from":7,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/client/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":22,"to":10,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.etcd.io/tests/v3 -> go.etcd.io/etcd/server/v3"},{"from":10,"to":5,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.etcd.io/etcd/server/v3 is replaced by ./FORBIDDEN_DEPENDENCY"},{"from":23,"to":24,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel -> go.opentelemetry.io/otel/exporters/otlp/otlptrace"},{"from":24,"to":25,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace is replaced by ../../.."},{"from":23,"to":26,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"},{"from":26,"to":27,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc is replaced by ../../../.."},{"from":23,"to":28,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel -> go.opentelemetry.io/otel/metric"},{"from":28,"to":29,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/metric is replaced by ../"},{"from":23,"to":30,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel -> go.opentelemetry.io/otel/sdk"},{"from":30,"to":29,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/sdk is replaced by ../"},{"from":23,"to":31,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel -> go.opentelemetry.io/otel/trace"},{"from":31,"to":29,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/trace is replaced by ../"},{"from":32,"to":24,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/exporters/otlp/internal/retry -> go.opentelemetry.io/otel/exporters/otlp/otlptrace"},{"from":24,"to":33,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace is replaced by ../internal/retry"},{"from":32,"to":26,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/exporters/otlp/internal/retry -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"},{"from":26,"to":34,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc is replaced by ../../internal/retry"},{"from":24,"to":26,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"},{"from":26,"to":29,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc is replaced by ../"},{"from":30,"to":24,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/sdk -> go.opentelemetry.io/otel/exporters/otlp/otlptrace"},{"from":24,"to":35,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace is replaced by ../../../sdk"},{"from":30,"to":26,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/sdk -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"},{"from":26,"to":36,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc is replaced by ../../../../sdk"},{"from":31,"to":23,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/trace -> go.opentelemetry.io/otel"},{"from":23,"to":37,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel is replaced by ./trace"},{"from":31,"to":24,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/trace -> go.opentelemetry.io/otel/exporters/otlp/otlptrace"},{"from":24,"to":38,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace is replaced by ../../../trace"},{"from":31,"to":26,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/trace -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"},{"from":26,"to":39,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc is replaced by ../../../../trace"},{"from":31,"to":28,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/trace -> go.opentelemetry.io/otel/metric"},{"from":28,"to":40,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/metric is replaced by ../trace"},{"from":31,"to":30,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>go.opentelemetry.io/otel/trace -> go.opentelemetry.io/otel/sdk"},{"from":30,"to":40,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>go.opentelemetry.io/otel/sdk is replaced by ../trace"},{"from":41,"to":42,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>golang.org/x/sys -> k8s.io/gengo"},{"from":42,"to":43,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/gengo is replaced by golang.org/x/sys @ v0.0.0-20190813064441-fde4db37ae7a"},{"from":44,"to":42,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>golang.org/x/tools -> k8s.io/gengo"},{"from":42,"to":45,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/gengo is replaced by golang.org/x/tools @ v0.0.0-20190821162956-65e3620a7ae7"},{"from":46,"to":47,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/api -> k8s.io/apiextensions-apiserver"},{"from":47,"to":48,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiextensions-apiserver is replaced by k8s.io/api @ v0.28.0"},{"from":46,"to":49,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/api -> k8s.io/apiserver"},{"from":49,"to":50,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiserver is replaced by k8s.io/api @ v0.28.1"},{"from":46,"to":51,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/api -> k8s.io/client-go"},{"from":51,"to":52,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/client-go is replaced by k8s.io/api @ v0.28.3"},{"from":46,"to":53,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/api -> k8s.io/component-base"},{"from":53,"to":50,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/component-base is replaced by k8s.io/api @ v0.28.1"},{"from":46,"to":54,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/api -> k8s.io/kms"},{"from":54,"to":50,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/kms is replaced by k8s.io/api @ v0.28.1"},{"from":55,"to":46,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/apimachinery -> k8s.io/api"},{"from":46,"to":56,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/api is replaced by k8s.io/apimachinery @ v0.28.3"},{"from":55,"to":47,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/apimachinery -> k8s.io/apiextensions-apiserver"},{"from":47,"to":57,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiextensions-apiserver is replaced by k8s.io/apimachinery @ v0.28.0"},{"from":55,"to":49,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/apimachinery -> k8s.io/apiserver"},{"from":49,"to":58,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiserver is replaced by k8s.io/apimachinery @ v0.28.1"},{"from":55,"to":51,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/apimachinery -> k8s.io/client-go"},{"from":51,"to":56,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/client-go is replaced by k8s.io/apimachinery @ v0.28.3"},{"from":55,"to":53,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/apimachinery -> k8s.io/component-base"},{"from":53,"to":58,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/component-base is replaced by k8s.io/apimachinery @ v0.28.1"},{"from":55,"to":54,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/apimachinery -> k8s.io/kms"},{"from":54,"to":58,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/kms is replaced by k8s.io/apimachinery @ v0.28.1"},{"from":49,"to":47,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/apiserver -> k8s.io/apiextensions-apiserver"},{"from":47,"to":59,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiextensions-apiserver is replaced by k8s.io/apiserver @ v0.28.0"},{"from":51,"to":47,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/client-go -> k8s.io/apiextensions-apiserver"},{"from":47,"to":60,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiextensions-apiserver is replaced by k8s.io/client-go @ v0.28.0"},{"from":51,"to":49,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/client-go -> k8s.io/apiserver"},{"from":49,"to":61,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiserver is replaced by k8s.io/client-go @ v0.28.1"},{"from":51,"to":53,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/client-go -> k8s.io/component-base"},{"from":53,"to":61,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/component-base is replaced by k8s.io/client-go @ v0.28.1"},{"from":51,"to":54,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/client-go -> k8s.io/kms"},{"from":54,"to":61,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/kms is replaced by k8s.io/client-go @ v0.28.1"},{"from":62,"to":47,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/code-generator -> k8s.io/apiextensions-apiserver"},{"from":47,"to":63,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiextensions-apiserver is replaced by k8s.io/code-generator @ v0.28.0"},{"from":53,"to":47,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/component-base -> k8s.io/apiextensions-apiserver"},{"from":47,"to":64,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiextensions-apiserver is replaced by k8s.io/component-base @ v0.28.0"},{"from":53,"to":49,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/component-base -> k8s.io/apiserver"},{"from":49,"to":65,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiserver is replaced by k8s.io/component-base @ v0.28.1"},{"from":54,"to":47,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/kms -> k8s.io/apiextensions-apiserver"},{"from":47,"to":66,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiextensions-apiserver is replaced by k8s.io/kms @ v0.28.0"},{"from":54,"to":49,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>k8s.io/kms -> k8s.io/apiserver"},{"from":49,"to":67,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>k8s.io/apiserver is replaced by k8s.io/kms @ v0.28.1"},{"from":68,"to":1,"color":{"color":"#2196f3"},"title":"Submodule Relation:<br>sourcegraph.com/sourcegraph/go-diff -> github.com/go-openapi/swag"},{"from":1,"to":69,"color":{"color":"#ff9800"},"title":"Replacement Relation:<br>github.com/go-openapi/swag is replaced by github.com/sourcegraph/go-diff @ v0.5.1"}]);
+
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        var options = {
+            nodes: {
+                shape: 'dot',
+                size: 10,
+                font: {
+                    size: 18
+                }
+            },
+            edges: {
+                arrows: 'to',
+                width: 0.15,
+                color: { inherit: 'from' },
+                smooth: {
+                    type: 'dynamic'
+                }
+            },
+            physics: {
+                enabled: true,
+                stabilization: false,
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: {
+                    gravitationalConstant: -12,
+                    centralGravity: 0.005,
+                    springLength: 400,
+                    springConstant: 0.04,
+                    damping: 0.2,
+                    avoidOverlap: 0.9
+                },
+                minVelocity: 0.1,
+                maxVelocity: 100,
+                timestep: 0.3,
+                adaptiveTimestep: true,
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100,
+                navigationButtons: true,
+                keyboard: true,
+                zoomView: true,
+                hoverConnectedEdges: true
+            },
+        };
+        var network = new vis.Network(container, data, options);
+        
+        // Search functionality
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+
+        searchButton.addEventListener('click', searchNode);
+
+
+        // Store original colors when initializing nodes
+        nodes.forEach(function(node) {
+            node.originalColor = node.color ? Object.assign({}, node.color) : { border: '#2B7CE9', width: 5 };
+            console.log('Initializing node ' + node.id + ' with original color:', node.originalColor);
+        });
+        
+        // Modify the event listener for search input
+        searchInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                searchNode();
+            } else if (searchInput.value === '') {
+                console.log('Search input cleared');
+                // resetNodeColors();
+            }
+        });
+        
+        function searchNode() {
+            const searchTerm = searchInput.value.toLowerCase();
+            console.log('Searching for:', searchTerm);
+            // resetNodeColors(); // Reset colors before new search
+        
+            if (searchTerm === '') {
+                console.log('Search term is empty, exiting search');
+                return; // Exit if search is empty
+            }
+        
+            const matchingNodes = nodes.get({
+                filter: function (node) {
+                    return node.label.toLowerCase().includes(searchTerm);
+                }
+            });
+        
+            console.log('Matching nodes:', matchingNodes.map(node => node.id));
+        
+            if (matchingNodes.length > 0) {
+                matchingNodes.forEach(function(node) {
+                    console.log('Changing color of node ' + node.id + ':', node.color, ' -> ', { border: '#d32f2f', width: 5 });
+                    nodes.update({
+                        id: node.id,
+                        color: { border: '#d32f2f',width: 5 }
+                    });
+                });
+    
+                network.fit({
+                    nodes: matchingNodes.map(function(node) { return node.id; }),
+                    animation: true
+                });
+                network.selectNodes(matchingNodes.map(function(node) { return node.id; }));
+            } else {
+                console.log('No matching nodes found');
+            }
+        }
+        
+        // function resetNodeColors() {
+        //     console.log('Resetting node colors');
+        //     nodes.get().forEach(function(node) {
+        //         const originalColor = node.originalColor || { background: '#97C2FC', border: '#2B7CE9' };
+        //         console.log('Resetting color of node ' + node.id + ':', node.color, ' -> ', originalColor);
+        //         nodes.update({
+        //             id: node.id,
+        //             color: Object.assign({}, originalColor)
+        //         });
+        //     });
+        // }
+
+        // function highlightMatchingNodes() {
+        //     const searchTerm = searchInput.value.toLowerCase();
+        //     nodes.update(nodes.get().map(node => {
+        //         if (node.label.toLowerCase().includes(searchTerm)) {
+        //             return { ...node, color: { background: 'yellow', border: '#d32f2f' } };
+        //         } else {
+        //             return { ...node, color: node.originalColor || node.color };
+        //         }
+        //     }));
+        // }
+
+        // Filter functionality
+        const filterCheckboxes = document.querySelectorAll('.filter-checkbox');
+        filterCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', applyFilters);
+        });
+
+        function applyFilters() {
+            const showOriginal = document.querySelector('.filter-checkbox[value="original"]').checked;
+            const showReplaced = document.querySelector('.filter-checkbox[value="replaced"]').checked;
+            const showKubernetes = document.querySelector('.filter-checkbox[value="kubernetes"]').checked;
+
+            nodes.update(nodes.get().map(node => {
+                const isOriginal = node.color.background === '#e57373';
+                const isReplaced = node.color.background === '#8bc34a';
+                const isKubernetes = node.label.toLowerCase().includes('kubernetes');
+
+                const visible = (showOriginal && isOriginal) ||
+                                (showReplaced && isReplaced) ||
+                                (showKubernetes && isKubernetes);
+
+                return { ...node, hidden: !visible };
+            }));
+
+            edges.update(edges.get().map(edge => {
+                const fromNode = nodes.get(edge.from);
+                const toNode = nodes.get(edge.to);
+                return { ...edge, hidden: fromNode.hidden || toNode.hidden };
+            }));
+        }
+        
+        
+        // Make the legend draggable
+        var legend = document.getElementById('legend');
+        var isDragging = false;
+        var currentX;
+        var currentY;
+        var initialX;
+        var initialY;
+        var xOffset = 0;
+        var yOffset = 0;
+
+        legend.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+
+            if (e.target === legend) {
+                isDragging = true;
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                setTranslate(currentX, currentY, legend);
+            }
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+
+            isDragging = false;
+        }
+
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+        }
+        
+        // Toggle JSON Table visibility
+        var toggleButton = document.getElementById('toggleTable');
+        var jsonTable = document.getElementById('jsonTable');
+        toggleButton.addEventListener('click', function() {
+            if (jsonTable.style.display === 'none') {
+                jsonTable.style.display = 'block';
+                toggleButton.textContent = 'Hide JSON Table';
+            } else {
+                jsonTable.style.display = 'none';
+                toggleButton.textContent = 'Show JSON Table';
+            }
+        });
+    </script>
+</body>
+</html>
+    

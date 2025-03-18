@@ -1,0 +1,169 @@
+{
+  "versioningAndDependencyEvolution": {
+    "averageBacklogCount": 3.34982332155477,
+    "averageKubernetesBacklogCount": 8.208333333333334,
+    "averageNonKubernetesBacklogCount": 2.3574468085106384,
+    "versionUpgradePatterns": {
+      "incrementalUpdates": 151,
+      "skipMinorVersions": 0,
+      "totalUpgrades": 151
+    },
+    "backlogByType": {
+      "Direct": {
+        "count": 20,
+        "totalBacklog": 127,
+        "averageBacklog": 6.35
+      },
+      "Indirect": {
+        "count": 93,
+        "totalBacklog": 236,
+        "averageBacklog": 2.5376344086021505
+      },
+      "Transitive": {
+        "count": 170,
+        "totalBacklog": 585,
+        "averageBacklog": 3.4411764705882355
+      }
+    }
+  },
+  "dependencyTypeAnalysis": {
+    "distribution": {
+      "Direct": 20,
+      "Indirect": 93,
+      "Transitive": 170,
+      "total": 283
+    },
+    "averageBacklogByType": {
+      "Direct": 6.35,
+      "Indirect": 2.5376344086021505,
+      "Transitive": 3.4411764705882355
+    }
+  },
+  "dependencyGraphComplexity": {
+    "kubernetesModuleCount": 48,
+    "totalModuleCount": 283,
+    "kubernetesPercentage": 16.96113074204947,
+    "longestUpgradeTraces": [
+      {
+        "path": "github.com/envoyproxy/protoc-gen-validate@v1.1.0",
+        "trace": "v1.1.0->v1.1.1-SNAPSHOT.0->v1.1.1-SNAPSHOT.1->v1.1.1-SNAPSHOT.2->v1.1.1-SNAPSHOT.3->v1.1.1-SNAPSHOT.4->v1.1.1-SNAPSHOT.5->v1.1.1-SNAPSHOT.6->v1.1.1-SNAPSHOT.7->v1.1.1-SNAPSHOT.8->v1.1.1-SNAPSHOT.9->v1.1.1-SNAPSHOT.10->v1.1.1-SNAPSHOT.11->v1.1.1-SNAPSHOT.12->v1.1.1-SNAPSHOT.13->v1.1.1-SNAPSHOT.14->v1.1.1-SNAPSHOT.15->v1.1.1-SNAPSHOT.16->v1.1.1-SNAPSHOT.17->v1.1.1-SNAPSHOT.18->v1.1.1-SNAPSHOT.19->v1.1.1-SNAPSHOT.20->v1.1.1-SNAPSHOT.21->v1.1.1-SNAPSHOT.22->v1.1.1-SNAPSHOT.23->v1.1.1-SNAPSHOT.24->v1.1.1-SNAPSHOT.25->v1.2.0->v1.2.1-SNAPSHOT.0->v1.2.1-java->v1.2.1",
+        "length": 31
+      },
+      {
+        "path": "github.com/aws/aws-sdk-go-v2/service/s3@v1.71.1",
+        "trace": "v1.71.1->v1.72.0->v1.72.1->v1.72.2->v1.72.3->v1.73.0->v1.73.1->v1.73.2->v1.74.0->v1.74.1->v1.75.0->v1.75.1->v1.75.2->v1.75.3->v1.75.4->v1.76.0->v1.76.1->v1.77.0->v1.77.1->v1.78.0->v1.78.1->v1.78.2",
+        "length": 22
+      },
+      {
+        "path": "github.com/yuin/goldmark@v1.4.13",
+        "trace": "v1.4.13->v1.4.14->v1.4.15->v1.5.0->v1.5.1->v1.5.2->v1.5.3->v1.5.4->v1.5.5->v1.5.6->v1.6.0->v1.7.0->v1.7.1->v1.7.2->v1.7.3->v1.7.4->v1.7.5->v1.7.6->v1.7.7->v1.7.8",
+        "length": 20
+      },
+      {
+        "path": "k8s.io/api@v0.31.0",
+        "trace": "v0.31.0->v0.31.1->v0.31.2->v0.31.3->v0.31.4->v0.31.5->v0.31.6->v0.31.7->v0.32.0-alpha.0->v0.32.0-alpha.1->v0.32.0-alpha.2->v0.32.0-alpha.3->v0.32.0-beta.0->v0.32.0-rc.0->v0.32.0-rc.1->v0.32.0-rc.2->v0.32.0->v0.32.1->v0.32.2->v0.32.3",
+        "length": 20
+      },
+      {
+        "path": "k8s.io/apiextensions-apiserver@v0.31.0",
+        "trace": "v0.31.0->v0.31.1->v0.31.2->v0.31.3->v0.31.4->v0.31.5->v0.31.6->v0.31.7->v0.32.0-alpha.0->v0.32.0-alpha.1->v0.32.0-alpha.2->v0.32.0-alpha.3->v0.32.0-beta.0->v0.32.0-rc.0->v0.32.0-rc.1->v0.32.0-rc.2->v0.32.0->v0.32.1->v0.32.2->v0.32.3",
+        "length": 20
+      },
+      {
+        "path": "k8s.io/apimachinery@v0.31.0",
+        "trace": "v0.31.0->v0.31.1->v0.31.2->v0.31.3->v0.31.4->v0.31.5->v0.31.6->v0.31.7->v0.32.0-alpha.0->v0.32.0-alpha.1->v0.32.0-alpha.2->v0.32.0-alpha.3->v0.32.0-beta.0->v0.32.0-rc.0->v0.32.0-rc.1->v0.32.0-rc.2->v0.32.0->v0.32.1->v0.32.2->v0.32.3",
+        "length": 20
+      },
+      {
+        "path": "k8s.io/apiserver@v0.31.0",
+        "trace": "v0.31.0->v0.31.1->v0.31.2->v0.31.3->v0.31.4->v0.31.5->v0.31.6->v0.31.7->v0.32.0-alpha.0->v0.32.0-alpha.1->v0.32.0-alpha.2->v0.32.0-alpha.3->v0.32.0-beta.0->v0.32.0-rc.0->v0.32.0-rc.1->v0.32.0-rc.2->v0.32.0->v0.32.1->v0.32.2->v0.32.3",
+        "length": 20
+      },
+      {
+        "path": "k8s.io/cli-runtime@v0.31.0",
+        "trace": "v0.31.0->v0.31.1->v0.31.2->v0.31.3->v0.31.4->v0.31.5->v0.31.6->v0.31.7->v0.32.0-alpha.0->v0.32.0-alpha.1->v0.32.0-alpha.2->v0.32.0-alpha.3->v0.32.0-beta.0->v0.32.0-rc.0->v0.32.0-rc.1->v0.32.0-rc.2->v0.32.0->v0.32.1->v0.32.2->v0.32.3",
+        "length": 20
+      },
+      {
+        "path": "k8s.io/client-go@v0.31.0",
+        "trace": "v0.31.0->v0.31.1->v0.31.2->v0.31.3->v0.31.4->v0.31.5->v0.31.6->v0.31.7->v0.32.0-alpha.0->v0.32.0-alpha.1->v0.32.0-alpha.2->v0.32.0-alpha.3->v0.32.0-beta.0->v0.32.0-rc.0->v0.32.0-rc.1->v0.32.0-rc.2->v0.32.0->v0.32.1->v0.32.2->v0.32.3",
+        "length": 20
+      },
+      {
+        "path": "k8s.io/code-generator@v0.31.0",
+        "trace": "v0.31.0->v0.31.1->v0.31.2->v0.31.3->v0.31.4->v0.31.5->v0.31.6->v0.31.7->v0.32.0-alpha.0->v0.32.0-alpha.1->v0.32.0-alpha.2->v0.32.0-alpha.3->v0.32.0-beta.0->v0.32.0-rc.0->v0.32.0-rc.1->v0.32.0-rc.2->v0.32.0->v0.32.1->v0.32.2->v0.32.3",
+        "length": 20
+      }
+    ]
+  },
+  "kubernetesEcosystemAnalysis": {
+    "totalDependencies": 283,
+    "kubernetesDependencies": 48,
+    "percentage": 16.96113074204947,
+    "highestBacklogModules": [
+      {
+        "path": "github.com/aws/aws-sdk-go-v2/service/s3@v1.71.1",
+        "backlogCount": 21,
+        "type": "Transitive"
+      },
+      {
+        "path": "k8s.io/api@v0.31.0",
+        "backlogCount": 19,
+        "type": "Direct"
+      },
+      {
+        "path": "k8s.io/apiextensions-apiserver@v0.31.0",
+        "backlogCount": 19,
+        "type": "Indirect"
+      },
+      {
+        "path": "k8s.io/apimachinery@v0.31.0",
+        "backlogCount": 19,
+        "type": "Direct"
+      },
+      {
+        "path": "k8s.io/apiserver@v0.31.0",
+        "backlogCount": 19,
+        "type": "Indirect"
+      },
+      {
+        "path": "k8s.io/cli-runtime@v0.31.0",
+        "backlogCount": 19,
+        "type": "Transitive"
+      },
+      {
+        "path": "k8s.io/client-go@v0.31.0",
+        "backlogCount": 19,
+        "type": "Direct"
+      },
+      {
+        "path": "k8s.io/code-generator@v0.31.0",
+        "backlogCount": 19,
+        "type": "Transitive"
+      },
+      {
+        "path": "k8s.io/component-base@v0.31.0",
+        "backlogCount": 19,
+        "type": "Indirect"
+      },
+      {
+        "path": "k8s.io/component-helpers@v0.31.0",
+        "backlogCount": 19,
+        "type": "Transitive"
+      }
+    ],
+    "typeDistribution": {
+      "Direct": 9,
+      "Indirect": 10,
+      "Transitive": 29
+    }
+  },
+  "versionAdoptionTrends": {
+    "averageAdoptionTime": 572.0459363957597,
+    "versionTypes": {
+      "stable": 240,
+      "prerelease": 43,
+      "total": 283
+    }
+  }
+}

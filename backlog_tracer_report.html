@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kubernetes Operator Go Module Dependency Analysis Report</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      background: linear-gradient(135deg, rgba(255, 196, 1, 0.44), #2c3e50);
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+      padding: 20px 0;
+    }
+
+    .header h1 {
+      margin: 0;
+      padding: 0 0 10px 0;
+      font-size: 2.2em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header p {
+      margin: 0;
+      padding: 2px 0;
+      font-size: 1em;
+      opacity: 0.9;
+    }
+
+    .header strong {
+      font-weight: 600;
+      color: #ecf0f1;
+    }
+    
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .metric-card {
+      background: #f8f9fa;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 6px;
+      display: inline-block;
+      min-width: 200px;
+      margin-right: 15px;
+    }
+    .metric-title {
+      font-size: 0.9em;
+      color: #666;
+    }
+    .metric-value {
+      font-size: 1.4em;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .recommendation {
+      border-left: 4px solid #3498db;
+      padding-left: 15px;
+      margin: 10px 0;
+    }
+    .alert {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      padding: 12px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    
+    .progress-container {
+        margin: 20px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .progress-bar {
+        position: relative;
+        width: 100%;
+        height: 50px;  /* Increased height */
+        background: #f1f1f1;
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+        margin: 15px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 15px;  /* Increased font size */
+        font-weight: bold;
+        transition: width 0.3s ease;
+        white-space: nowrap;
+        padding: 0 15px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);  /* Added text shadow for better readability */
+    }
+    
+    .distribution-legend {
+        display: flex;
+        gap: 25px;
+        margin-top: 20px;
+        justify-content: center;
+        flex-wrap: wrap;  /* Allow wrapping on smaller screens */
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95em;
+        padding: 5px 10px;
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    .legend-color {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+    }
+    
+    .metric-details {
+        margin-top: 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 6px;
+        border-left: 4px solid #3498db;
+    }
+    
+    .adoption-time-explanation {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #e67e22;
+    }
+    
+    .distribution-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>Kubernetes Operator Go Module Dependency Analysis Report</h1>
+  <p>By Jahidul Arafat (former L3 Solution Architect, Oracle), PhD Student, PASER Lab, CSSE, AU</p>
+  <p>Repository: <strong>aerospike/aerospike-kubernetes-operator</strong></p>
+  <p>Analysis Date: <strong>3/18/2025</strong></p>
+</div>
+
+<div class="section">
+  <h2>Executive Summary</h2>
+  <div class="metric-card">
+    <div class="metric-title">Total Dependencies</div>
+    <div class="metric-value">283</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Stable Versions</div>
+    <div class="metric-value">240</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Pre-release Versions</div>
+    <div class="metric-value">43</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Average Version Backlog</div>
+    <div class="metric-value">3.35</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Dependency Distribution</h2>
+  <div class="progress-container">
+    <h3>Distribution by Type</h3>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width: 7.1%; background-color: #2980b9;">
+        Direct: 20 (7.1%)
+      </div>
+      <div class="progress-fill" style="width: 32.9%; background-color: #27ae60;">
+        Indirect: 93 (32.9%)
+      </div>
+      <div class="progress-fill" style="width: 60.1%; background-color: #c0392b;">
+        Transitive: 170 (60.1%)
+      </div>
+    </div>
+    <div class="distribution-legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: #2980b9;"></div>
+        <span>Direct Dependencies: 20 (7.1%)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: #27ae60;"></div>
+        <span>Indirect Dependencies: 93 (32.9%)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: #c0392b;"></div>
+        <span>Transitive Dependencies: 170 (60.1%)</span>
+      </div>
+    </div>
+
+    <div class="metric-details">
+      <h4>Distribution Analysis</h4>
+      <div class="distribution-metrics">
+        <div>
+          <strong>Direct Dependencies</strong>
+          <ul>
+            <li>Count: 20</li>
+            <li>Average Backlog: 6.35 versions</li>
+            <li>Percentage: 7.1%</li>
+          </ul>
+        </div>
+        <div>
+          <strong>Indirect Dependencies</strong>
+          <ul>
+            <li>Count: 93</li>
+            <li>Average Backlog: 2.54 versions</li>
+            <li>Percentage: 32.9%</li>
+          </ul>
+        </div>
+        <div>
+          <strong>Transitive Dependencies</strong>
+          <ul>
+            <li>Count: 170</li>
+            <li>Average Backlog: 3.44 versions</li>
+            <li>Percentage: 60.1%</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="adoption-time-explanation">
+    <h4>Understanding Average Adoption Time: 572 days</h4>
+    <p>The Average Adoption Time indicates how long it typically takes for this repository to adopt new versions of its dependencies:</p>
+    <ul>
+      <li><strong>Current Average:</strong> 572 days (~19.1 months)</li>
+      <li><strong>Impact:</strong> Considerable delay in adopting new versions, which might indicate conservative update policies or potential technical debt.</li>
+      <li><strong>Context:</strong> This metric is calculated from the time difference between when a new version becomes available and the current version being used.</li>
+    </ul>
+  </div>
+
+  <h3>Backlog Analysis by Type</h3>
+  <div class="metric-card">
+    <div class="metric-title">Direct Dependencies Backlog</div>
+    <div class="metric-value">6.35</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Indirect Dependencies Backlog</div>
+    <div class="metric-value">2.54</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Transitive Dependencies Backlog</div>
+    <div class="metric-value">3.44</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Kubernetes Ecosystem Integration</h2>
+  <div class="metric-card">
+    <div class="metric-title">Kubernetes Dependencies</div>
+    <div class="metric-value">48</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Kubernetes Percentage</div>
+    <div class="metric-value">16.96%</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">K8s Modules Backlog</div>
+    <div class="metric-value">8.21</div>
+  </div>
+
+  <h3>Top 5 Highest Backlog Kubernetes Modules</h3>
+  <ul>
+    
+    <li>github.com/aws/aws-sdk-go-v2/service/s3@v1.71.1 (21 versions behind, Transitive)</li>
+    
+    <li>k8s.io/api@v0.31.0 (19 versions behind, Direct)</li>
+    
+    <li>k8s.io/apiextensions-apiserver@v0.31.0 (19 versions behind, Indirect)</li>
+    
+    <li>k8s.io/apimachinery@v0.31.0 (19 versions behind, Direct)</li>
+    
+    <li>k8s.io/apiserver@v0.31.0 (19 versions behind, Indirect)</li>
+    
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Version Management Patterns</h2>
+  <div class="metric-card">
+    <div class="metric-title">Incremental Updates</div>
+    <div class="metric-value">151</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Skip Minor Versions</div>
+    <div class="metric-value">0</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-title">Average Adoption Time</div>
+    <div class="metric-value">572 days</div>
+  </div>
+
+  <h3>Top 5 Longest Upgrade Traces</h3>
+  <ul>
+    
+    <li>github.com/envoyproxy/protoc-gen-validate@v1.1.0 (31 versions in upgrade path)</li>
+    
+    <li>github.com/aws/aws-sdk-go-v2/service/s3@v1.71.1 (22 versions in upgrade path)</li>
+    
+    <li>github.com/yuin/goldmark@v1.4.13 (20 versions in upgrade path)</li>
+    
+    <li>k8s.io/api@v0.31.0 (20 versions in upgrade path)</li>
+    
+    <li>k8s.io/apiextensions-apiserver@v0.31.0 (20 versions in upgrade path)</li>
+    
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Recommendations</h2>
+  <div class="recommendation">
+    <h3>High Priority Updates</h3>
+    <p>Focus on modules with highest backlog counts, particularly:</p>
+    <ul>
+      
+      <li>github.com/aws/aws-sdk-go-v2/service/s3@v1.71.1 (21 versions behind)</li>
+      
+      <li>k8s.io/api@v0.31.0 (19 versions behind)</li>
+      
+      <li>k8s.io/apiextensions-apiserver@v0.31.0 (19 versions behind)</li>
+      
+    </ul>
+  </div>
+
+  <div class="recommendation">
+    <h3>Version Management Strategy</h3>
+    <p>Consider the following metrics for your update strategy:</p>
+    <ul>
+      <li>Average adoption time is 572 days</li>
+      <li>43 pre-release versions in use</li>
+      <li>170 transitive dependencies to monitor</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Conclusion</h2>
+  <p>
+    This repository maintains 240 stable dependencies (84.8%)
+    with an average version backlog of 3.35 versions.
+    The Kubernetes ecosystem integration comprises 17.0% of total dependencies.
+    Regular maintenance is recommended, particularly for modules with significant version backlogs.
+  </p>
+</div>
+</body>
+</html>
